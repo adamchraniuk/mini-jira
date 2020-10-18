@@ -1,0 +1,37 @@
+
+* {
+  box-sizing: border-box;
+}
+
+.w-100 {
+  width: 100%;
+}
+
+.w-50 {
+  width: 50%;
+}
+.w-25 {
+  width: 25%;
+}
+.mw-25 {
+  max-width: 25%;
+}
+.no_decoration {
+  text-decoration: none;
+}
+
+.pointer {
+  cursor: pointer;
+  &:hover {
+    background-color: lighten(#000,20%);
+    transition: all .2s linear;
+  }
+}
+
+.relative {
+  position: relative;
+}
+
+.card_min_height {
+  min-height: 200px;
+}

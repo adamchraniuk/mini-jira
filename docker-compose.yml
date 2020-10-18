@@ -1,0 +1,58 @@
+version: '3.1'
+networks:
+  default:
+    driver: 'bridge'
+
+services:
+  adminer:
+    image: adminer
+    networks:
+      default:
+    restart: always
+    ports:
+      - 8080:8080
+
+  mysql:
+    image: mysql
+    networks:
+      default:
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    volumes:
+      - ./database-service/setup.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      MYSQL_ROOT_PASSWORD: '123'
+      MYSQL_DATABASE: 'mini_jira'
+      MYSQL_USER: 'admin'
+      MYSQL_PASSWORD: 'admin'
+    ports:
+      - 3318:3306
+    build: ./database-service
+
+  node:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    depends_on:
+      - "mysql"
+    links:
+      - mysql:mysql
+    environment:
+      - PORT=4000
+    networks:
+      default:
+    restart: always
+    ports:
+      - '4000:4000'
+
+  front:
+    build:
+      context: .
+      dockerfile: Dockerfile.front
+    environment:
+      - PORT=8000
+    networks:
+      default:
+    restart: always
+    ports:
+      - '8000:8000'

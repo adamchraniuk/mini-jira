@@ -25,18 +25,27 @@
 import { Vue, Component } from 'vue-property-decorator'
 import { namespace } from 'vuex-class'
 import * as api from '@/api'
+import { Issue } from '@/types/issues/types'
 
 const issues = namespace('issues')
 
 @Component
 export default class AddIssue extends Vue {
-  @issues.Getter('activeIssue') activeIssue
-  @issues.Action('getSingleIssue') getSingleIssue
-  @issues.Action('updateIssue') updateIssue
-  summary = ''
-  description = ''
-  id = ''
-  error = null
+  @issues.Getter('activeIssue') activeIssue: Issue
+  @issues.Action('getSingleIssue') getSingleIssue: (issueId: string) => void
+  @issues.Action('updateIssue') updateIssue: ({
+    projectId,
+    issueId,
+    body,
+  }: {
+    projectId: string
+    issueId: string
+    body: Issue
+  }) => void
+  summary: string = ''
+  description: string = ''
+  id: string = ''
+  error: string = ''
 
   mounted() {
     if (this.isEditMode) {
@@ -66,6 +75,9 @@ export default class AddIssue extends Vue {
           summary: this.summary,
           description: this.description,
         })
+        if (results.data.error) {
+          new Error(results.data.error)
+        }
         const id = results.data.id
         await this.$router.push(`/issues/${id}`)
       } catch (e) {

@@ -12,6 +12,17 @@ interface Issue {
   related_issues?: string
 }
 
+interface RespOk {
+  ok: string
+  id?: string
+}
+
+interface RespError {
+  error: string
+}
+
+type UnionType = Issue | RespOk | RespError
+
 const getRelatedIssues = async (req: Request) => {
   return await knex('issues')
     .select('related_issues')
@@ -35,9 +46,9 @@ const getIssue = async (req: Request) => {
     .orderBy([{ column: 'id', order: 'asc' }])
     .catch(error => error)
 }
-export const getSingleIssue = async (req: Request, resp: Response) => {
+export const getSingleIssue = async (req: Request, resp: Response<Issue[]>) => {
   const results = await getIssue(req)
-  resp.send({ results })
+  resp.send(results)
 }
 const getAllIssues = async (req: Request) => {
   return await knex('issues')
@@ -47,52 +58,56 @@ const getAllIssues = async (req: Request) => {
     .catch(error => error)
 }
 
-export const getIssues = async (req: Request, res: Response) => {
+export const getIssues = async (req: Request, res: Response<Issue[]>) => {
   const results = await knex('issues')
     .select()
     .orderBy([{ column: 'id', order: 'asc' }])
     .catch(error => error)
-  res.send({ results })
+  res.send(results)
 }
 
-export const getAllFromProject = async (req: Request, res: Response) => {
+export const getAllFromProject = async (req: Request, res: Response<Issue[]>) => {
   const results = await getAllIssues(req)
-  res.send({ results })
+  res.send(results)
 }
 
-export const getRelated = async (req: Request, res: Response) => {
+export const getRelated = async (req: Request, res: Response<Issue[]>) => {
   const query = await getRelatedIssues(req)
   const results = await knex('issues')
     .select()
-    .where(builder => builder.whereIn('id', JSON.parse(query[0].related_issues)))
+    .where(builder => builder.whereIn('id', JSON.parse(JSON.stringify(query[0].related_issues))))
     .orderBy([{ column: 'id', order: 'asc' }])
     .catch(error => error)
-  res.send({ results })
+  res.send(results)
 }
 
-export const removeRelation = async (req: Request, res: Response) => {
-  const body = req.body
-  const { projectId, id } = req.params
-  if (!body.id) {
-    return res.status(422).send({ error: 'Issue id is missing.' })
-  }
-  const query = await getRelatedIssues(req)
-  const relations: string[] = JSON.parse(query[0].related_issues)
-  const relationIndex = relations.indexOf(req.body.id)
+export const removeRelation = async (req: Request, res: Response<UnionType>) => {
+  try {
+    const body = req.body
+    const { projectId, id } = req.params
+    if (!body.id) {
+      return res.status(422).send({ error: 'Issue id is missing.' })
+    }
+    const query = await getRelatedIssues(req)
+    const relations: string[] = JSON.parse(JSON.stringify(query[0].related_issues))
+    const relationIndex = relations.indexOf(req.body.id)
 
-  if (relationIndex < 0) {
-    return res.status(404).send({ error: 'This relation does not exist.' })
+    if (relationIndex < 0) {
+      return res.status(404).send({ error: 'This relation does not exist.' })
+    }
+    relations.splice(relationIndex, 1)
+    await updateRelations(projectId, id, relations)
+    const item = await getIssue(req)
+    const relatedIssue = JSON.parse(JSON.stringify(item[0].related_issues))
+    relatedIssue.splice(relatedIssue.indexOf(req.params.id), 1)
+    await updateRelations(projectId, body.id, relatedIssue)
+    res.status(200).send({ ok: 'Successfully removed relation.' })
+  } catch (e) {
+    return new Error(e)
   }
-  relations.splice(relationIndex, 1)
-  await updateRelations(projectId, id, relations)
-  const item = await getIssue(req)
-  const relatedIssue = JSON.parse(item[0].related_issues)
-  relatedIssue.splice(relatedIssue.indexOf(req.params.id), 1)
-  await updateRelations(projectId, body.id, relatedIssue)
-  res.status(200).send({ ok: 'Successfully removed relation.' })
 }
 
-export const remove = async (req: Request, res: Response) => {
+export const remove = async (req: Request, res: Response<UnionType>) => {
   const body = req.body
   if (!body.id) {
     return res.status(422).send({ error: 'Issue id is missing.' })
@@ -108,66 +123,73 @@ export const remove = async (req: Request, res: Response) => {
   res.status(200).send({ ok: 'Successfully deleted issue.' })
 }
 
-export const add = async (req: Request, res: Response) => {
+export const add = async (req: Request, res: Response<UnionType>) => {
   const body = req.body
 
   if (!body.summary) {
     return res.status(422).send({ error: 'Issue summary is missing.' })
   }
+  try {
+    const query = await getAllIssues(req)
+    const issueExist = _.find(query, (issue: Issue) => issue.summary === body.summary)
 
-  const query = await getAllIssues(req)
-  const issueExist = _.find(query, (issue: Issue) => issue.summary === body.summary)
-
-  if (!issueExist) {
-    const id = `${req.params.projectId}-${query.length}`
-    await knex
-      .insert({
-        id,
-        projectId: req.params.projectId,
-        summary: body.summary,
-        status: 'TODO',
-        description: body.description || '',
-        created_at: new Date(),
-        modified_at: new Date(),
-        related_issues: '[]',
-      })
-      .into('issues')
-    return res.status(200).send({ ok: 'Successfully added new issue.', id })
+    if (!issueExist) {
+      const id = `${req.params.projectId}-${query.length}`
+      await knex
+        .insert({
+          id,
+          projectId: req.params.projectId,
+          summary: body.summary,
+          status: 'TODO',
+          description: body.description || '',
+          created_at: new Date(),
+          modified_at: new Date(),
+          related_issues: '[]',
+        })
+        .into('issues')
+      return res.status(200).send({ ok: 'Successfully added new issue.', id })
+    }
+    res.status(422).send({ error: 'Issue already exists.' })
+  } catch (e) {
+    return new Error(e)
   }
-  res.status(422).send({ error: 'Issue already exists.' })
 }
 
-export const addRelation = async (req: Request, res: Response) => {
-  const body = req.body
-  const { projectId, id } = req.params
-  if (id == body.id) {
-    return res.status(422).send({ error: 'You can not do that.' })
+export const addRelation = async (req: Request, res: Response<UnionType>) => {
+  try {
+    const body = req.body
+    const { projectId, id } = req.params
+    if (id == body.id) {
+      return res.status(422).send({ error: 'You can not do that.' })
+    }
+    if (!body.id) {
+      return res.status(422).send({ error: 'Issue id is missing.' })
+    }
+    const query = await getRelatedIssues(req)
+    if (!query) {
+      return res.status(422).send({ error: 'Issue not exist.' })
+    }
+    const newRelations = JSON.parse(JSON.stringify(query[0].related_issues))
+    const relationExist = _.find(newRelations, (issue: Issue) => issue === body.id)
+    if (relationExist) {
+      return res.status(422).send({ error: 'This relation already exist.' })
+    }
+    newRelations.push(body.id)
+    await updateRelations(projectId, id, newRelations)
+    const item = await getIssue(req)
+    if (!item) {
+      return res.status(422).send({ error: 'Issue not exist.' })
+    }
+    const relatedIssue = JSON.parse(JSON.stringify(item[0].related_issues))
+    relatedIssue.push(id)
+    await updateRelations(projectId, body.id, relatedIssue)
+    res.status(200).send({ ok: 'Successfully added relation.' })
+  } catch (e) {
+    return new Error(e)
   }
-  if (!body.id) {
-    return res.status(422).send({ error: 'Issue id is missing.' })
-  }
-  const query = await getRelatedIssues(req)
-  if (!query) {
-    return res.status(422).send({ error: 'Issue not exist.' })
-  }
-  const newRelations = JSON.parse(query[0].related_issues)
-  const relationExist = _.find(newRelations, (issue: Issue) => issue === body.id)
-  if (relationExist) {
-    return res.status(422).send({ error: 'This relation already exist.' })
-  }
-  newRelations.push(body.id)
-  await updateRelations(projectId, id, newRelations)
-  const item = await getIssue(req)
-  if (!item) {
-    return res.status(422).send({ error: 'Issue not exist.' })
-  }
-  const relatedIssue = JSON.parse(item[0].related_issues)
-  relatedIssue.push(id)
-  await updateRelations(projectId, body.id, relatedIssue)
-  res.status(200).send({ ok: 'Successfully added relation.' })
 }
 
-export const edit = async (req: Request, res: Response) => {
+export const edit = async (req: Request, res: Response<UnionType>) => {
   const body = req.body
   if (!body.summary) {
     return res.status(422).send({ error: 'Issue summary is missing.' })

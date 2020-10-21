@@ -28,6 +28,7 @@ import { namespace } from 'vuex-class'
 import Loader from '@/components/loader.vue'
 import IssuesList from '@/components/issues-list.vue'
 import Autocomplete from '@/components/autocomplete.vue'
+import { Issue } from '@/types/issues/types'
 
 const issues = namespace('issues')
 @Component({
@@ -38,10 +39,10 @@ const issues = namespace('issues')
   },
 })
 export default class Issues extends Vue {
-  @issues.Action('getIssuesList') getIssuesList
-  @issues.Action('toggleLoading') toggleLoading
-  @issues.Getter('allIssues') allIssues
-  @issues.State('loading') loading
+  @issues.Action('getIssuesList') getIssuesList: () => void
+  @issues.Action('toggleLoading') toggleLoading: (boolean) => void
+  @issues.Getter('allIssues') allIssues: Issue[]
+  @issues.State('loading') loading: boolean
 
   created() {
     this.toggleLoading(true)

@@ -29,10 +29,10 @@ export default class AddProject extends Vue {
   @projects.Action('getProject') getProject
   @projects.Getter('activeProject') activeProject
 
-  name = ''
-  description = ''
-  id = ''
-  error = null
+  name: string = ''
+  description: string = ''
+  id: string = ''
+  error: string = ''
 
   async mounted() {
     if (this.isEditMode) {
@@ -61,12 +61,15 @@ export default class AddProject extends Vue {
       }
     } else {
       try {
-        const result = await api.addProject({
+        const results = await api.addProject({
           name: this.name,
           description: this.description,
         })
+        if (results.data.error) {
+          new Error(results.data.error)
+        }
         await this.getProjectsList()
-        await this.$router.push(`/projects/${result.data.id}`)
+        await this.$router.push(`/projects/${results.data.id}`)
       } catch (e) {
         this.error = e
       }

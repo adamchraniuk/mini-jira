@@ -51,9 +51,17 @@ export default class IssuesList extends Vue {
   @Prop({ required: false }) readonly status: string
   @Prop({ default: true, required: false }) readonly noIcon: boolean
   @Prop({ default: false, required: false }) readonly unlink: boolean
-  @issues.Action('removeIssue') removeIssue
-  @issues.Action('removeRelation') removeRelation
-  @issues.Action('getProjectsIssues') getProjectsIssues
+  @issues.Action('removeIssue') removeIssue: ({ projectId, body }: { projectId: string; body: { id: string } }) => void
+  @issues.Action('removeRelation') removeRelation: ({
+    issueId,
+    projectId,
+    relatedIssueId,
+  }: {
+    issueId: string
+    projectId: string
+    relatedIssueId: string
+  }) => void
+  @issues.Action('getProjectsIssues') getProjectsIssues: (projectId: string) => void
 
   deleteIssue() {
     const { projectId, id } = this

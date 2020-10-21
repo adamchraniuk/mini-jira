@@ -49,7 +49,7 @@ import { Vue, Component } from 'vue-property-decorator'
 import { namespace } from 'vuex-class'
 import IssuesList from '@/components/issues-list.vue'
 import Autocomplete from '@/components/autocomplete.vue'
-
+import { Issue } from '@/types/issues/types'
 const issues = namespace('issues')
 
 @Component({
@@ -59,13 +59,27 @@ const issues = namespace('issues')
   },
 })
 export default class SingleIssue extends Vue {
-  @issues.Action('getSingleIssue') getSingleIssue
-  @issues.Action('getRelatedIssues') getRelatedIssues
-  @issues.Action('addRelation') addRelation
-  @issues.Action('toggleLoading') toggleLoading
-  @issues.Getter('activeIssue') activeIssue
-  @issues.Getter('relatedIssues') relatedIssues
-  @issues.Getter('issuesList') issuesList
+  @issues.Action('getSingleIssue') getSingleIssue: (issueId: string) => void
+  @issues.Action('getRelatedIssues') getRelatedIssues: ({
+    issueId,
+    projectId,
+  }: {
+    issueId: string
+    projectId: string
+  }) => void
+  @issues.Action('addRelation') addRelation: ({
+    issueId,
+    projectId,
+    relatedIssueId,
+  }: {
+    issueId: string
+    projectId: string
+    relatedIssueId: string
+  }) => void
+  @issues.Action('toggleLoading') toggleLoading: void
+  @issues.Getter('activeIssue') activeIssue: Issue
+  @issues.Getter('relatedIssues') relatedIssues: Issue[]
+  @issues.Getter('issuesList') issuesList: Issue[]
 
   mounted() {
     this.refreshList()
@@ -79,7 +93,7 @@ export default class SingleIssue extends Vue {
     })
   }
 
-  linkIssues(data) {
+  linkIssues(data: Issue) {
     this.addRelation({
       issueId: this.$route.params.issueId,
       projectId: this.activeIssue.projectId,

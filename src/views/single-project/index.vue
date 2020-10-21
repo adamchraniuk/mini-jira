@@ -9,7 +9,7 @@
       <autocomplete class="mt-4" :list="list" :label="'Find issue'" @onChange="redirectToIssue"></autocomplete>
     </v-col>
     <v-col md="4" sm="4" class="ml-auto">
-      <sort-by :sort-by="sortByState" @onSort="sortBy" />
+      <sort-by-component :sort-by="sortByState" @onSort="sortBy" />
     </v-col>
     <h1 class="w-100 col-sm-12">
       {{ projectTitle }}
@@ -41,8 +41,10 @@ import { Vue, Component } from 'vue-property-decorator'
 import { namespace } from 'vuex-class'
 import IssuesList from '@/components/issues-list.vue'
 import Loader from '@/components/loader.vue'
-import SortBy from '@/components/sortby.vue'
+import SortByComponent from '@/components/sortby.vue'
 import Autocomplete from '@/components/autocomplete.vue'
+import { Project } from '@/types/projects/types'
+import { Issue, SortBy } from '@/types/issues/types'
 
 const issues = namespace('issues')
 const projects = namespace('projects')
@@ -52,22 +54,27 @@ const projects = namespace('projects')
     Autocomplete,
     Loader,
     IssuesList,
-    SortBy,
+    SortByComponent,
   },
 })
 export default class SingleProject extends Vue {
-  @projects.State('list') project
-  @projects.Action('getProjectsList') getProjectsList
-  @issues.Action('getProjectsIssues') getProjectsIssues
-  @issues.Action('updateIssue') updateIssue
-  @issues.Action('toggleLoading') toggleLoading
-  @issues.Action('removeIssue') removeIssue
-  @issues.Getter('issuesList') list
-  @issues.State('loading') loading
-  @issues.Action('sortBy') sortBy
-  @issues.Action('addNewIssue') addNewIssue
-  @issues.State('sortBy') sortByState
-  statuses = ['TODO', 'IN PROGRESS', 'DONE']
+  @projects.State('list') project: Project[]
+  @issues.Action('getProjectsIssues') getProjectsIssues: (projectId: string) => void
+  @issues.Action('updateIssue') updateIssue: ({
+    projectId,
+    issueId,
+    body: { summary, status },
+  }: {
+    projectId: string
+    issueId: string
+    body: { summary: string; status: string }
+  }) => void
+  @issues.Action('toggleLoading') toggleLoading: (boolean) => void
+  @issues.Getter('issuesList') list: Issue[]
+  @issues.State('loading') loading: boolean
+  @issues.Action('sortBy') sortBy: void
+  @issues.State('sortBy') sortByState: SortBy
+  statuses: string[] = ['TODO', 'IN PROGRESS', 'DONE']
 
   async created() {
     this.toggleLoading(true)

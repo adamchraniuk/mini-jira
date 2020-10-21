@@ -1,99 +1,100 @@
 import * as api from '@/api'
 import { sortByFunction } from '@/helpers'
-
-interface Issue {
-  id: string
-  projectId: string
-  description: string
-  created_at: Date
-  modified_at: Date
-  status: string
-  related_issues: string
-}
+import { GetAddRemoveRelation, AddRemoveIssue, SortBy, Issue, IssueState } from '@/types/issues/types'
+import { Commit, Dispatch } from 'vuex'
 
 export default {
   namespaced: true,
   state: {
-    list: [] as Issue[],
-    allIssues: [] as Issue[],
-    relatedIssues: [] as Issue[],
-    loading: true as boolean,
-    activeIssue: null as Issue,
+    list: [],
+    allIssues: [],
+    relatedIssues: [],
+    loading: true,
+    activeIssue: null,
     sortBy: {
       direction: 'asc',
       element: 'created_at',
     },
   },
   mutations: {
-    setIssues(state, value) {
+    setIssues(state: IssueState, value: Issue[]) {
       state.list = value
     },
-    setAllIssues(state, value) {
+    setAllIssues(state: IssueState, value: Issue[]) {
       state.allIssues = [...value]
     },
-    toggleLoading(state, value) {
+    toggleLoading(state: IssueState, value: boolean) {
       state.loading = value
     },
-    setSortBy(state, value) {
+    setSortBy(state: IssueState, value: SortBy) {
       state.sortBy = value
     },
-    setActiveIssue(state, value) {
+    setActiveIssue(state: IssueState, value: Issue) {
       state.activeIssue = value[0]
     },
-    setRelatedIssues(state, value) {
+    setRelatedIssues(state: IssueState, value: Issue[]) {
       state.relatedIssues = value
     },
   },
   actions: {
-    async removeRelation({ dispatch }, { projectId, issueId, relatedIssueId }) {
+    async removeRelation(
+      { dispatch }: { dispatch: Dispatch },
+      { projectId, issueId, relatedIssueId }: GetAddRemoveRelation
+    ) {
       await api.removeRelation(projectId, issueId, relatedIssueId)
-      dispatch('getRelatedIssues', { projectId, issueId })
+      await dispatch('getRelatedIssues', { projectId, issueId })
     },
-    async addRelation({ dispatch }, { projectId, issueId, relatedIssueId }) {
+
+    async addRelation(
+      { dispatch }: { dispatch: Dispatch },
+      { projectId, issueId, relatedIssueId }: GetAddRemoveRelation
+    ) {
       await api.addRelation(projectId, issueId, relatedIssueId)
-      dispatch('getRelatedIssues', { projectId, issueId })
+      await dispatch('getRelatedIssues', { projectId, issueId })
     },
-    async getRelatedIssues({ commit }, { projectId, issueId }) {
+
+    async getRelatedIssues({ commit }: { commit: Commit }, { projectId, issueId }: GetAddRemoveRelation) {
       const related = await api.getRelatedIssues(projectId, issueId)
-      commit('setRelatedIssues', related.results)
+      commit('setRelatedIssues', related)
     },
-    async getSingleIssue({ commit }, id) {
+
+    async getSingleIssue({ commit }: { commit: Commit }, id: string) {
       const issue = await api.getSingleIssue(id)
-      commit('setActiveIssue', issue.results)
+      commit('setActiveIssue', issue)
     },
-    async getProjectsIssues({ commit }, projectId) {
+    async getProjectsIssues({ commit }: { commit: Commit }, projectId: string) {
       const list = await api.getAllIssuesInProject(projectId)
-      commit('setIssues', list.results)
+      commit('setIssues', list)
       commit('toggleLoading', false)
     },
-    toggleLoading({ commit }, value) {
+    toggleLoading({ commit }: { commit: Commit }, value: boolean) {
       commit('toggleLoading', value)
     },
-    async updateIssue({ dispatch }, { projectId, issueId, body }) {
+    async updateIssue({ dispatch }: { dispatch: Dispatch }, { projectId, issueId, body }: GetAddRemoveRelation) {
       await api.editIssue(projectId, issueId, body)
-      dispatch('getProjectsIssues', projectId)
+      await dispatch('getProjectsIssues', projectId)
     },
-    async getIssuesList({ commit }) {
+    async getIssuesList({ commit }: { commit: Commit }) {
       const list = await api.getIssues()
-      commit('setAllIssues', list.results)
+      commit('setAllIssues', list)
       commit('toggleLoading', false)
     },
-    async addNewIssue({ dispatch }, { projectId, summary }) {
+    async addNewIssue({ dispatch }: { dispatch: Dispatch }, { projectId, summary }: AddRemoveIssue) {
       await api.addNewIssue(projectId, { summary })
-      dispatch('getIssuesList')
+      await dispatch('getIssuesList')
     },
-    async removeIssue({ dispatch }, { projectId, body }) {
+    async removeIssue({ dispatch }: { dispatch: Dispatch }, { projectId, body }: AddRemoveIssue) {
       await api.removeIssue(projectId, { id: body.id })
-      dispatch('getIssuesList')
+      await dispatch('getIssuesList')
     },
-    sortBy({ commit, state }, value) {
+    sortBy({ commit }: { commit: Commit }, value: SortBy) {
       commit('setSortBy', value)
     },
   },
   getters: {
-    activeIssue: state => state.activeIssue,
-    issuesList: state => sortByFunction(state),
-    allIssues: state => state.allIssues,
-    relatedIssues: state => state.relatedIssues,
+    activeIssue: (state: IssueState) => state.activeIssue,
+    issuesList: (state: IssueState) => sortByFunction(state),
+    allIssues: (state: IssueState) => state.allIssues,
+    relatedIssues: (state: IssueState) => state.relatedIssues,
   },
 }

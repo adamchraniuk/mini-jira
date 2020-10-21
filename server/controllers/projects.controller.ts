@@ -3,12 +3,22 @@ import * as _ from 'lodash'
 import { knex } from '../db'
 
 interface Project {
-  id?: number
+  id?: string
   name: string
   description?: string
   created_at: Date
   modified_at: Date
 }
+
+interface RespOk {
+  ok: string
+}
+
+interface RespError {
+  error: string
+}
+
+type UnionType = Project | RespOk | RespError
 
 const allProjects = async () => {
   return await knex('projects')
@@ -17,19 +27,19 @@ const allProjects = async () => {
     .catch(error => error)
 }
 
-export const getAll = async (req: Request, res: Response) => {
-  const results = await allProjects()
-  res.send({ results })
+export const getAll = async (req: Request, res: Response<Project[]>) => {
+  const results: Project[] = await allProjects()
+  res.send(results)
 }
-export const getSingleProject = async (req: Request, res: Response) => {
+export const getSingleProject = async (req: Request, res: Response<Project[]>) => {
   const results = await knex('projects')
     .select()
     .where({ id: req.params.id })
     .catch(error => error)
-  res.send({ results })
+  res.send(results)
 }
 
-export const addNew = async (req: Request, res: Response) => {
+export const addNew = async (req: Request, res: Response<UnionType>) => {
   const body: Project = req.body
   if (!body.name) {
     return res.status(422).send({ error: 'Project name is missing.' })
@@ -57,7 +67,7 @@ export const addNew = async (req: Request, res: Response) => {
   res.status(422).send({ error: 'Project already exists.' })
 }
 
-export const update = async (req: Request, res: Response) => {
+export const update = async (req: Request, res: Response<UnionType>) => {
   const body: Project = req.body
   if (!body.name || !body.id) {
     return res.status(422).send({ error: 'Project name or id is missing.' })
@@ -72,7 +82,7 @@ export const update = async (req: Request, res: Response) => {
   res.status(200).send({ ok: 'Successfully updated project.' })
 }
 
-export const remove = async (req: Request, res: Response) => {
+export const remove = async (req: Request, res: Response<UnionType>) => {
   const body: Project = req.body
   if (!body.id) {
     return res.status(422).send({ error: 'Project id is missing.' })

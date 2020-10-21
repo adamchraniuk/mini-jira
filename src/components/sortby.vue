@@ -19,12 +19,13 @@
 
 <script lang="ts">
 import { Vue, Component, Prop } from 'vue-property-decorator'
+import { SortBy } from '@/types/issues/types'
 
 @Component
-export default class SortBy extends Vue {
-  @Prop() readonly sortBy
-  directions = ['asc', 'desc']
-  elements = ['modified_at', 'created_at']
+export default class SortByComponent extends Vue {
+  @Prop() readonly sortBy: SortBy
+  directions: string[] = ['asc', 'desc']
+  elements: string[] = ['modified_at', 'created_at']
   mounted() {
     this.$emit('onSort', this.sortBy)
   }

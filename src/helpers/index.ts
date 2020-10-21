@@ -1,4 +1,7 @@
-export const sortByFunction = state => {
+import { IssueState } from '@/types/issues/types'
+import { ProjectState } from '@/types/projects/types'
+
+export const sortByFunction = (state: IssueState | ProjectState) => {
   const list = [...state.list]
   const element = state.sortBy.element
   if (state.sortBy.direction === 'asc') {
